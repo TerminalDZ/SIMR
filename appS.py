@@ -2,7 +2,6 @@ import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
 from scipy.special import gamma
-import plotly.express as px
 
 st.set_page_config(layout="wide", page_title="Simulation de Barre Piézoélectrique")
 
@@ -69,68 +68,113 @@ u, phi = calculate_solutions(x, t, u1_0, alpha, lambd)
 # Création des visualisations
 st.header("Visualisation des Résultats")
 
-# Sélection du temps pour les graphiques 2D
-selected_time = st.slider("Sélectionner le temps pour les graphiques 2D", 
-                         min_value=0.0, 
-                         max_value=float(T), 
-                         value=float(T)/2)
-time_index = int((selected_time/T) * (N_t-1))
-
-# Création de deux colonnes pour les graphiques 2D
+# Création des graphiques 3D
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("Déplacement u(x, t) à t sélectionné")
-    fig_u_2d = px.line(x=x, y=u[time_index, :],
-                       labels={'x': 'Position x (m)', 'y': 'Déplacement u (m)'},
-                       title=f"Déplacement à t = {selected_time:.2f} s")
-    st.plotly_chart(fig_u_2d, use_container_width=True)
-
-with col2:
-    st.subheader("Potentiel électrique φ(x, t) à t sélectionné")
-    fig_phi_2d = px.line(x=x, y=phi[time_index, :],
-                         labels={'x': 'Position x (m)', 'y': 'Potentiel électrique φ (V)'},
-                         title=f"Potentiel électrique à t = {selected_time:.2f} s")
-    st.plotly_chart(fig_phi_2d, use_container_width=True)
-
-# Création des graphiques 3D
-col3, col4 = st.columns(2)
-
-with col3:
     st.subheader("Déplacement u(x, t) en 3D")
     X, T = np.meshgrid(x, t)
-    fig_u_3d = go.Figure(data=[go.Surface(x=X, y=T, z=u)])
-    fig_u_3d.update_layout(
+    
+    # Création du graphique 3D interactif pour u
+    fig_u = go.Figure(data=[go.Surface(
+        x=X, y=T, z=u,
+        colorscale='viridis',
+        colorbar=dict(title='u (m)')
+    )])
+    
+    fig_u.update_layout(
         scene=dict(
             xaxis_title='Position x (m)',
             yaxis_title='Temps t (s)',
-            zaxis_title='Déplacement u (m)'
+            zaxis_title='Déplacement u (m)',
+            camera=dict(
+                up=dict(x=0, y=0, z=1),
+                center=dict(x=0, y=0, z=0),
+                eye=dict(x=1.5, y=1.5, z=1.5)
+            ),
         ),
         width=600,
-        height=500
+        height=600,
+        margin=dict(l=0, r=0, t=30, b=0)
     )
-    st.plotly_chart(fig_u_3d, use_container_width=True)
+    
+    st.plotly_chart(fig_u, use_container_width=True)
 
-with col4:
+with col2:
     st.subheader("Potentiel électrique φ(x, t) en 3D")
-    fig_phi_3d = go.Figure(data=[go.Surface(x=X, y=T, z=phi)])
-    fig_phi_3d.update_layout(
+    
+    # Création du graphique 3D interactif pour phi
+    fig_phi = go.Figure(data=[go.Surface(
+        x=X, y=T, z=phi,
+        colorscale='plasma',
+        colorbar=dict(title='φ (V)')
+    )])
+    
+    fig_phi.update_layout(
         scene=dict(
             xaxis_title='Position x (m)',
             yaxis_title='Temps t (s)',
-            zaxis_title='Potentiel électrique φ (V)'
+            zaxis_title='Potentiel électrique φ (V)',
+            camera=dict(
+                up=dict(x=0, y=0, z=1),
+                center=dict(x=0, y=0, z=0),
+                eye=dict(x=1.5, y=1.5, z=1.5)
+            ),
         ),
         width=600,
-        height=500
+        height=600,
+        margin=dict(l=0, r=0, t=30, b=0)
     )
-    st.plotly_chart(fig_phi_3d, use_container_width=True)
+    
+    st.plotly_chart(fig_phi, use_container_width=True)
 
 # Ajout des contrôles pour les graphiques 3D
-st.sidebar.header("Contrôles des graphiques 3D")
 st.sidebar.markdown("""
 ### Instructions pour les graphiques 3D:
-- **Rotation**: Cliquez et faites glisser
+- **Rotation**: Cliquez et faites glisser avec le bouton gauche
 - **Zoom**: Utilisez la molette de la souris ou pincez sur l'écran tactile
 - **Déplacement**: Cliquez-droit et faites glisser
 - **Reset**: Double-cliquez sur le graphique
+- **Vue en plein écran**: Cliquez sur le bouton d'expansion en haut à droite du graphique
 """)
+
+# Ajout des contrôles de coupe
+st.header("Coupes 2D")
+selected_time = st.slider("Sélectionner le temps pour la coupe", 0.0, float(T), float(T)/2)
+time_index = int((selected_time/T) * (N_t-1))
+
+col3, col4 = st.columns(2)
+
+with col3:
+    # Coupe de u à temps fixé
+    fig_u_slice = go.Figure()
+    fig_u_slice.add_trace(go.Scatter(
+        x=x,
+        y=u[time_index, :],
+        mode='lines',
+        name=f't = {selected_time:.2f} s'
+    ))
+    fig_u_slice.update_layout(
+        title=f"Déplacement u(x) à t = {selected_time:.2f} s",
+        xaxis_title="Position x (m)",
+        yaxis_title="Déplacement u (m)",
+        height=400
+    )
+    st.plotly_chart(fig_u_slice, use_container_width=True)
+
+with col4:
+    # Coupe de phi à temps fixé
+    fig_phi_slice = go.Figure()
+    fig_phi_slice.add_trace(go.Scatter(
+        x=x,
+        y=phi[time_index, :],
+        mode='lines',
+        name=f't = {selected_time:.2f} s'
+    ))
+    fig_phi_slice.update_layout(
+        title=f"Potentiel électrique φ(x) à t = {selected_time:.2f} s",
+        xaxis_title="Position x (m)",
+        yaxis_title="Potentiel électrique φ (V)",
+        height=400
+    )
+    st.plotly_chart(fig_phi_slice, use_container_width=True)
